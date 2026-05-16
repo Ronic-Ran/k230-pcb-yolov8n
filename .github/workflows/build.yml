@@ -19,26 +19,53 @@ jobs:
         
     - name: Build in Docker
       run: |
-        # 启动容器，挂载当前仓库
         docker run -u root -v ${{ github.workspace }}:/workspace ghcr.io/kendryte/k230_sdk:latest /bin/bash -c "
-          # 克隆完整 SDK（包含子模块）
+          set -e
+          
+          echo '========== Clone K230 SDK =========='
           cd /tmp && git clone --recursive https://github.com/kendryte/k230_canmv.git canmv
           cd canmv && git submodule update --init --recursive || true
           
-          # 复制你的代码到 SDK
+          echo '========== Check nncase libraries =========='
+          if [ -d 'src/big/nncase/lib' ]; then
+              echo 'Found nncase lib directory:'
+              ls -la src/big/nncase/lib/ || true
+          else
+              echo 'Building nncase from source...'
+              if [ -f 'src/big/nncase/CMakeLists.txt' ]; then
+                  mkdir -p src/big/nncase/build
+                  cd src/big/nncase/build
+                  cmake .. -DCMAKE_BUILD_TYPE=Release
+                  make -j\$(nproc)
+                  cd /tmp/canmv
+              fi
+          fi
+          
+          echo '========== Copy source code =========='
           rm -rf /tmp/canmv/src/reference/ai_poc/pcb_yolov8n
           mkdir -p /tmp/canmv/src/reference/ai_poc/pcb_yolov8n
-          cp /workspace/*.cc /tmp/canmv/src/reference/ai_poc/pcb_yolov8n/
-          cp /workspace/*.h /tmp/canmv/src/reference/ai_poc/pcb_yolov8n/
+          cp /workspace/*.cc /tmp/canmv/src/reference/ai_poc/pcb_yolov8n/ || true
+          cp /workspace/*.h /tmp/canmv/src/reference/ai_poc/pcb_yolov8n/ || true
           cp /workspace/CMakeLists.txt /tmp/canmv/src/reference/ai_poc/pcb_yolov8n/
           
-          # 编译
+          echo 'Copied files:'
+          ls -la /tmp/canmv/src/reference/ai_poc/pcb_yolov8n/
+          
+          echo '========== Compile project =========='
           cd /tmp/canmv/src/reference/ai_poc/pcb_yolov8n
           mkdir -p build && cd build
-          cmake ..
-          make -j4
+          cmake -DK230_SDK=/tmp/canmv ..
+          make -j\$(nproc)
           
-          # 复制结果回 workspace
+          echo '========== Verify output =========='
+          if [ -f 'pcb_yolov8n.elf' ]; then
+              echo 'Build successful!'
+              ls -lh pcb_yolov8n.elf
+          else
+              echo 'ERROR: pcb_yolov8n.elf not found!'
+              exit 1
+          fi
+          
           cp pcb_yolov8n.elf /workspace/
         "
         
