@@ -4,9 +4,6 @@
 #include <unistd.h>
 #include <vector>
 #include "yolov8n_pcb.h"
-#include <cstdio>
-#include <cstring>
-#include <unistd.h>
 
 // 图像缩放：最近邻算法
 void resize_rgb(uint8_t* src, int sw, int sh, uint8_t* dst, int dw, int dh) {

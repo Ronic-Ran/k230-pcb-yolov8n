@@ -2,6 +2,7 @@
 #define YOLOV8N_PCB_H
 
 #include <vector>
+#include <cstdint>
 
 #define YOLO_CLASSES     6
 #define YOLO_ANCHORS     2100
