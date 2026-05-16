@@ -1,3 +1,8 @@
+#include <stdint.h>
+#include <cstdio>
+#include <cstring>
+#include <unistd.h>
+#include <vector>
 #include "yolov8n_pcb.h"
 #include <cstdio>
 #include <cstring>
