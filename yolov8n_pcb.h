@@ -20,7 +20,6 @@ struct PcbDetection {
     int   class_id;
 };
 
-// 这个类后面会用到，先定义结构
 void decode_yolov8_output(float* output, std::vector<PcbDetection>& results);
 void nms_boxes(std::vector<PcbDetection>& dets, std::vector<PcbDetection>& out);
 
