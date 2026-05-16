@@ -7,44 +7,43 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
       
-    - name: Install dependencies
+    - name: Pull K230 SDK Docker image
       run: |
-        sudo apt-get update
-        sudo apt-get install -y git cmake build-essential wget python3 python3-pip libssl-dev
+        docker pull ghcr.io/kendryte/k230_sdk:latest
         
-    - name: Clone K230 CanMV SDK
+    - name: Build in Docker
       run: |
-        cd /tmp
-        git clone --recursive https://github.com/kendryte/k230_canmv.git canmv
-        cd canmv
-        git submodule update --init --recursive || true
-        
-    - name: Copy PCB detection code
-      run: |
-        rm -rf /tmp/canmv/src/reference/ai_poc/pcb_yolov8n
-        mkdir -p /tmp/canmv/src/reference/ai_poc/pcb_yolov8n
-        cp -r $GITHUB_WORKSPACE/* /tmp/canmv/src/reference/ai_poc/pcb_yolov8n/
-        
-    - name: Build application
-      run: |
-        cd /tmp/canmv/src/reference/ai_poc/pcb_yolov8n
-        if [ -f build_app.sh ]; then
-          chmod +x build_app.sh
-          ./build_app.sh
-        else
+        # 启动容器，挂载当前仓库
+        docker run -u root -v ${{ github.workspace }}:/workspace ghcr.io/kendryte/k230_sdk:latest /bin/bash -c "
+          # 克隆完整 SDK（包含子模块）
+          cd /tmp && git clone --recursive https://github.com/kendryte/k230_canmv.git canmv
+          cd canmv && git submodule update --init --recursive || true
+          
+          # 复制你的代码到 SDK
+          rm -rf /tmp/canmv/src/reference/ai_poc/pcb_yolov8n
+          mkdir -p /tmp/canmv/src/reference/ai_poc/pcb_yolov8n
+          cp /workspace/*.cc /tmp/canmv/src/reference/ai_poc/pcb_yolov8n/
+          cp /workspace/*.h /tmp/canmv/src/reference/ai_poc/pcb_yolov8n/
+          cp /workspace/CMakeLists.txt /tmp/canmv/src/reference/ai_poc/pcb_yolov8n/
+          
+          # 编译
+          cd /tmp/canmv/src/reference/ai_poc/pcb_yolov8n
           mkdir -p build && cd build
           cmake ..
           make -j4
-        fi
+          
+          # 复制结果回 workspace
+          cp pcb_yolov8n.elf /workspace/
+        "
         
     - name: Upload ELF
       uses: actions/upload-artifact@v4
       with:
         name: pcb_yolov8n_elf
-        path: /tmp/canmv/src/reference/ai_poc/pcb_yolov8n/build/pcb_yolov8n.elf
+        path: pcb_yolov8n.elf
