@@ -88,3 +88,4 @@ EOF
       with:
         name: pcb_yolov8n_elf
         path: pcb_yolov8n.elf
+        
