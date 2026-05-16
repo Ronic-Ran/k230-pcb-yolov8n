@@ -1,0 +1,40 @@
+name: Build K230 PCB YOLOv8n
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:  # 允许手动点按钮编译
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/kendryte/k230_docker:latest
+      options: --user root
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Clone K230 SDK
+      run: |
+        git clone --recursive https://github.com/kendryte/k230_canmv.git /tmp/canmv
+        
+    - name: Copy code to SDK
+      run: |
+        rm -rf /tmp/canmv/src/reference/ai_poc/pcb_yolov8n
+        mkdir -p /tmp/canmv/src/reference/ai_poc/pcb_yolov8n
+        cp -r $GITHUB_WORKSPACE/* /tmp/canmv/src/reference/ai_poc/pcb_yolov8n/
+        
+    - name: Build
+      run: |
+        cd /tmp/canmv/src/reference/ai_poc/pcb_yolov8n
+        mkdir -p build && cd build
+        cmake -DK230_SDK=/tmp/canmv ..
+        make -j4
+        
+    - name: Upload ELF
+      uses: actions/upload-artifact@v4
+      with:
+        name: pcb_yolov8n_elf
+        path: /tmp/canmv/src/reference/ai_poc/pcb_yolov8n/build/pcb_yolov8n.elf
